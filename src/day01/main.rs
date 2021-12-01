@@ -3,40 +3,21 @@ use std::time::Instant;
 
 use aoc_2021::get_input_as_int;
 
-fn part1(values: &[u32]) -> u32 {
-    let mut cur = values[0];
+fn count_increases(values: &[u32], step: usize) -> u32 {
     let mut increases = 0;
 
-    for v in values.iter().skip(1) {
-        if *v > cur {
+    for i in 0..values.len() - step {
+        if values[i + step] > values[i] {
             increases += 1;
         }
-
-        cur = *v;
-    }
-
-    increases
-}
-
-fn part2(values: &[u32]) -> u32 {
-    let mut cur = values[0] + values[1] + values[2];
-    let mut increases = 0;
-
-    for i in 1..values.len() - 2 {
-        let v = values[i] + values[i + 1] + values[i + 2];
-        if v > cur {
-            increases += 1;
-        }
-
-        cur = v;
     }
 
     increases
 }
 
 fn solve(input: &[u32]) -> (impl Display, impl Display) {
-    let p1 = part1(input);
-    let p2 = part2(input);
+    let p1 = count_increases(input, 1);
+    let p2 = count_increases(input, 3);
 
     (p1, p2)
 }
@@ -48,16 +29,16 @@ fn main() {
 
     let (r1, r2) = solve(input.as_slice());
 
-    let t = start.elapsed().as_micros() as f64 / 1000.0;
+    let t = start.elapsed().as_nanos() as f64 / 1000.0;
 
     println!("Part 1: {}", r1);
     println!("Part 2: {}", r2);
-    println!("Duration: {:.3}ms", t);
+    println!("Duration: {:.3}μs", t);
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::{part1, part2};
+    use crate::count_increases;
 
     #[test]
     fn test_p1() {
@@ -76,7 +57,7 @@ mod tests {
             .split("\n")
             .map(|v| v.parse().unwrap())
             .collect::<Vec<u32>>();
-        let res = part1(&input);
+        let res = count_increases(&input, 1);
 
         assert_eq!(7, res);
     }
@@ -99,7 +80,7 @@ mod tests {
             .map(|v| v.parse().unwrap())
             .collect::<Vec<u32>>();
 
-        let res = part2(&input);
+        let res = count_increases(&input, 3);
 
         assert_eq!(5, res);
     }
