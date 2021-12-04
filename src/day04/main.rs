@@ -32,30 +32,35 @@ fn parse_input(input: &[String]) -> (Vec<i16>, Vec<Vec<i16>>) {
     (draw_numbers, boards)
 }
 
-fn get_winning_board(boards: &[Vec<i16>]) -> Option<(usize, Vec<i16>)> {
-    for (idx, b) in boards.iter().enumerate() {
-        for i in 0..5 {
-            // check rows
-            if b.iter().skip(i * 5).take(5).all(|&n| n == -1) {
-                return Some((idx, b.clone()));
-            }
+fn mark_boards(boards: &mut Vec<Vec<i16>>, number: i16) -> Vec<usize> {
+    let mut solved_boards = Vec::new();
 
-            // check columns
-            if b.iter().skip(i).step_by(5).all(|&n| n == -1) {
-                return Some((idx, b.clone()));
+    for (bnum, b) in boards.iter_mut().enumerate() {
+        if let Some((idx, _)) = b.iter().find_position(|&&n| n == number) {
+            b[idx] = -1;
+            if validate_row(b, idx / 5) || validate_col(b, idx % 5) {
+                solved_boards.push(bnum);
             }
         }
     }
 
-    None
+    solved_boards
+}
+
+fn validate_row(board: &[i16], row: usize) -> bool {
+    return board.iter().skip(row * 5).take(5).all(|&n| n == -1);
+}
+
+fn validate_col(board: &[i16], col: usize) -> bool {
+    return board.iter().skip(col).step_by(5).all(|&n| n == -1);
 }
 
 fn part1(draw_numbers: &[i16], boards: &mut Vec<Vec<i16>>) -> u32 {
     for n in draw_numbers {
-        mark_boards(boards, *n);
+        let solved = mark_boards(boards, *n);
 
-        if let Some((_, winner)) = get_winning_board(boards) {
-            let res = winner
+        if solved.len() == 1 {
+            let res = boards[solved[0]]
                 .iter()
                 .filter(|&&n| n >= 0)
                 .map(|&n| n as u32)
@@ -67,21 +72,13 @@ fn part1(draw_numbers: &[i16], boards: &mut Vec<Vec<i16>>) -> u32 {
     panic!("Non winning boards remaining");
 }
 
-fn mark_boards(boards: &mut Vec<Vec<i16>>, number: i16) {
-    for b in boards {
-        if let Some((idx, _)) = b.iter().find_position(|&&n| n == number) {
-            b[idx] = -1;
-        }
-    }
-}
-
 fn part2(draw_numbers: &[i16], boards: &mut Vec<Vec<i16>>) -> u32 {
     for n in draw_numbers {
-        mark_boards(boards, *n);
+        let solved = mark_boards(boards, *n);
 
-        while let Some((idx, _)) = get_winning_board(boards) {
+        for (idx, bnum) in solved.iter().enumerate() {
             if boards.len() == 1 {
-                let res = boards[0]
+                let res = boards[bnum - idx]
                     .iter()
                     .filter(|&&n| n >= 0)
                     .map(|&n| n as u32)
@@ -89,7 +86,7 @@ fn part2(draw_numbers: &[i16], boards: &mut Vec<Vec<i16>>) -> u32 {
                 return res * *n as u32;
             }
 
-            boards.remove(idx);
+            boards.remove(bnum - idx);
         }
     }
 
