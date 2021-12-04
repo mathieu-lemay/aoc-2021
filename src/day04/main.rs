@@ -2,23 +2,24 @@ use std::fmt::Display;
 use std::time::Instant;
 
 use aoc_2021::get_input;
+use itertools::Itertools;
 
-fn parse_input(input: &[String]) -> (Vec<u8>, Vec<Vec<u8>>) {
+fn parse_input(input: &[String]) -> (Vec<i16>, Vec<Vec<i16>>) {
     let draw_numbers = input[0]
         .split(',')
-        .map(|n| n.parse::<u8>().unwrap())
+        .map(|n| n.parse::<i16>().unwrap())
         .collect();
     let mut boards = Vec::new();
     let mut current_board = Vec::new();
 
     for l in input.iter().skip(2) {
-        if l == "" {
+        if l.is_empty() {
             boards.push(current_board);
             current_board = Vec::new();
             continue;
         }
 
-        let row: Vec<u8> = l
+        let row: Vec<i16> = l
             .split_whitespace()
             .filter(|s| !s.is_empty())
             .map(|n| n.parse().unwrap())
@@ -31,16 +32,16 @@ fn parse_input(input: &[String]) -> (Vec<u8>, Vec<Vec<u8>>) {
     (draw_numbers, boards)
 }
 
-fn get_winning_board(boards: &[Vec<u8>], numbers: &[&u8]) -> Option<(usize, Vec<u8>)> {
+fn get_winning_board(boards: &[Vec<i16>]) -> Option<(usize, Vec<i16>)> {
     for (idx, b) in boards.iter().enumerate() {
         for i in 0..5 {
             // check rows
-            if b.iter().skip(i * 5).take(5).all(|n| numbers.contains(&n)) {
+            if b.iter().skip(i * 5).take(5).all(|&n| n == -1) {
                 return Some((idx, b.clone()));
             }
 
             // check columns
-            if b.iter().skip(i).step_by(5).all(|n| numbers.contains(&n)) {
+            if b.iter().skip(i).step_by(5).all(|&n| n == -1) {
                 return Some((idx, b.clone()));
             }
         }
@@ -49,36 +50,40 @@ fn get_winning_board(boards: &[Vec<u8>], numbers: &[&u8]) -> Option<(usize, Vec<
     None
 }
 
-fn part1(draw_numbers: &[u8], boards: &[Vec<u8>]) -> u32 {
-    let mut numbers = Vec::new();
-
+fn part1(draw_numbers: &[i16], boards: &mut Vec<Vec<i16>>) -> u32 {
     for n in draw_numbers {
-        numbers.push(n);
+        mark_boards(boards, *n);
 
-        if let Some((_, winner)) = get_winning_board(boards, &numbers) {
+        if let Some((_, winner)) = get_winning_board(boards) {
             let res = winner
                 .iter()
-                .filter(|n| !numbers.contains(n))
+                .filter(|&&n| n >= 0)
                 .map(|&n| n as u32)
                 .sum::<u32>();
             return res * *n as u32;
         }
     }
 
-    0
+    panic!("Non winning boards remaining");
 }
 
-fn part2(draw_numbers: &[u8], boards: &mut Vec<Vec<u8>>) -> u32 {
-    let mut numbers = Vec::new();
+fn mark_boards(boards: &mut Vec<Vec<i16>>, number: i16) {
+    for b in boards {
+        if let Some((idx, _)) = b.iter().find_position(|&&n| n == number) {
+            b[idx] = -1;
+        }
+    }
+}
 
+fn part2(draw_numbers: &[i16], boards: &mut Vec<Vec<i16>>) -> u32 {
     for n in draw_numbers {
-        numbers.push(n);
+        mark_boards(boards, *n);
 
-        while let Some((idx, _)) = get_winning_board(boards, &numbers) {
+        while let Some((idx, _)) = get_winning_board(boards) {
             if boards.len() == 1 {
                 let res = boards[0]
                     .iter()
-                    .filter(|n| !numbers.contains(n))
+                    .filter(|&&n| n >= 0)
                     .map(|&n| n as u32)
                     .sum::<u32>();
                 return res * *n as u32;
@@ -88,13 +93,13 @@ fn part2(draw_numbers: &[u8], boards: &mut Vec<Vec<u8>>) -> u32 {
         }
     }
 
-    panic!("Boards remaining: {}", boards.len());
+    panic!("Non winning boards remaining");
 }
 
 fn solve(input: &[String]) -> (impl Display, impl Display) {
-    let (draw_numbers, mut boards) = parse_input(&input);
+    let (draw_numbers, mut boards) = parse_input(input);
 
-    let p1 = part1(&draw_numbers, &boards);
+    let p1 = part1(&draw_numbers, &mut boards);
     let p2 = part2(&draw_numbers, &mut boards);
 
     (p1, p2)
@@ -180,8 +185,8 @@ mod tests {
             .map(|v| v.to_string())
             .collect::<Vec<String>>();
 
-        let (draw_numbers, boards) = parse_input(&input);
-        let res = part1(&draw_numbers, &boards);
+        let (draw_numbers, mut boards) = parse_input(&input);
+        let res = part1(&draw_numbers, &mut boards);
 
         assert_eq!(res, 4512);
     }

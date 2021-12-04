@@ -7,7 +7,7 @@ bench day:
     cargo run --release --bin day"$(printf "%02d" "{{ day }}")"
 
 test day:
-    cargo test --bin day"$(printf "%02d" "{{ day }}")"
+    RUST_BACKTRACE=1 cargo test --bin day"$(printf "%02d" "{{ day }}")"
 
 prepare day:
     #! /bin/sh
