@@ -3,8 +3,56 @@ use std::time::Instant;
 
 use aoc_2021::get_input;
 
+fn part_1(positions: &[i32]) -> i32 {
+    let mut min_fuel = i32::MAX;
+
+    let a = *positions.iter().min().unwrap();
+    let b = *positions.iter().max().unwrap();
+
+    for i in a..=b {
+        let fuel: i32 = positions.iter().map(|&p| (p as i32 - i as i32).abs()).sum();
+
+        if fuel < min_fuel {
+            min_fuel = fuel;
+        }
+    }
+
+    min_fuel
+}
+
+fn part_2(positions: &[i32]) -> i32 {
+    let mut min_fuel = i32::MAX;
+
+    let a = *positions.iter().min().unwrap();
+    let b = *positions.iter().max().unwrap();
+
+    for i in a..=b {
+        let fuel: i32 = positions
+            .iter()
+            .map(|&p| {
+                let x = (p as i32 - i as i32).abs();
+                x * (x + 1) / 2
+            })
+            .sum();
+
+        if fuel < min_fuel {
+            min_fuel = fuel;
+        }
+    }
+
+    min_fuel
+}
+
 fn solve(input: &[String]) -> (impl Display, impl Display) {
-    (0, 0)
+    let positions = input[0]
+        .split(',')
+        .map(|v| v.parse().unwrap())
+        .collect::<Vec<i32>>();
+
+    let p1 = part_1(&positions);
+    let p2 = part_2(&positions);
+
+    (p1, p2)
 }
 
 fn main() {
@@ -19,4 +67,35 @@ fn main() {
     println!("Part 1: {}", r1);
     println!("Part 2: {}", r2);
     println!("Duration: {:.3}ms", t);
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::{part_1, part_2};
+
+    static TEST_INPUT: &str = "16,1,2,0,4,2,7,1,2,14";
+
+    #[test]
+    fn test_part_1() {
+        let input = TEST_INPUT
+            .split(',')
+            .map(|v| v.parse().unwrap())
+            .collect::<Vec<i32>>();
+
+        let res = part_1(&input);
+
+        assert_eq!(res, 37);
+    }
+
+    #[test]
+    fn test_part_2() {
+        let input = TEST_INPUT
+            .split(',')
+            .map(|v| v.parse().unwrap())
+            .collect::<Vec<i32>>();
+
+        let res = part_2(&input);
+
+        assert_eq!(res, 168);
+    }
 }
