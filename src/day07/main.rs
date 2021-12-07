@@ -4,43 +4,37 @@ use std::time::Instant;
 use aoc_2021::get_input;
 
 fn part_1(positions: &[i32]) -> i32 {
-    let mut min_fuel = i32::MAX;
-
     let a = *positions.iter().min().unwrap();
     let b = *positions.iter().max().unwrap();
 
-    for i in a..=b {
-        let fuel: i32 = positions.iter().map(|&p| (p as i32 - i as i32).abs()).sum();
-
-        if fuel < min_fuel {
-            min_fuel = fuel;
-        }
-    }
-
-    min_fuel
+    (a..=b)
+        .map(|t| get_fuel_cost_linear(&positions, t))
+        .min()
+        .unwrap()
 }
 
 fn part_2(positions: &[i32]) -> i32 {
-    let mut min_fuel = i32::MAX;
-
     let a = *positions.iter().min().unwrap();
     let b = *positions.iter().max().unwrap();
 
-    for i in a..=b {
-        let fuel: i32 = positions
-            .iter()
-            .map(|&p| {
-                let x = (p as i32 - i as i32).abs();
-                x * (x + 1) / 2
-            })
-            .sum();
+    (a..=b)
+        .map(|t| get_fuel_cost_increasing(&positions, t))
+        .min()
+        .unwrap()
+}
 
-        if fuel < min_fuel {
-            min_fuel = fuel;
-        }
-    }
+fn get_fuel_cost_linear(positions: &[i32], target: i32) -> i32 {
+    positions.iter().map(|&p| (p - target).abs()).sum()
+}
 
-    min_fuel
+fn get_fuel_cost_increasing(positions: &[i32], target: i32) -> i32 {
+    positions
+        .iter()
+        .map(|&p| {
+            let x = (p - target).abs();
+            x * (x + 1) / 2
+        })
+        .sum()
 }
 
 fn solve(input: &[String]) -> (impl Display, impl Display) {
