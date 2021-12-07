@@ -1,26 +1,44 @@
+use std::cmp;
 use std::fmt::Display;
 use std::time::Instant;
 
 use aoc_2021::get_input;
 
 fn part_1(positions: &[i32]) -> i32 {
-    let a = *positions.iter().min().unwrap();
-    let b = *positions.iter().max().unwrap();
+    let t = *positions.get(positions.len() / 2).unwrap();
 
-    (a..=b)
-        .map(|t| get_fuel_cost_linear(&positions, t))
-        .min()
-        .unwrap()
+    let mut fuel = get_fuel_cost_linear(positions, t);
+
+    for i in 1..positions.len() {
+        let a = get_fuel_cost_linear(positions, t + i as i32);
+        let b = get_fuel_cost_linear(positions, t - i as i32);
+
+        if a >= fuel && b >= fuel {
+            break;
+        }
+
+        fuel = cmp::min(a, b);
+    }
+
+    fuel
 }
-
 fn part_2(positions: &[i32]) -> i32 {
-    let a = *positions.iter().min().unwrap();
-    let b = *positions.iter().max().unwrap();
+    let t = *positions.get(positions.len() / 2).unwrap();
 
-    (a..=b)
-        .map(|t| get_fuel_cost_increasing(&positions, t))
-        .min()
-        .unwrap()
+    let mut fuel = get_fuel_cost_increasing(positions, t);
+
+    for i in 1..positions.len() {
+        let a = get_fuel_cost_increasing(positions, t + i as i32);
+        let b = get_fuel_cost_increasing(positions, t - i as i32);
+
+        if a >= fuel && b >= fuel {
+            break;
+        }
+
+        fuel = cmp::min(a, b);
+    }
+
+    fuel
 }
 
 fn get_fuel_cost_linear(positions: &[i32], target: i32) -> i32 {
@@ -38,10 +56,12 @@ fn get_fuel_cost_increasing(positions: &[i32], target: i32) -> i32 {
 }
 
 fn solve(input: &[String]) -> (impl Display, impl Display) {
-    let positions = input[0]
+    let mut positions = input[0]
         .split(',')
         .map(|v| v.parse().unwrap())
         .collect::<Vec<i32>>();
+
+    positions.sort_unstable();
 
     let p1 = part_1(&positions);
     let p2 = part_2(&positions);
@@ -71,10 +91,12 @@ mod tests {
 
     #[test]
     fn test_part_1() {
-        let input = TEST_INPUT
+        let mut input = TEST_INPUT
             .split(',')
             .map(|v| v.parse().unwrap())
             .collect::<Vec<i32>>();
+
+        input.sort();
 
         let res = part_1(&input);
 
@@ -83,10 +105,12 @@ mod tests {
 
     #[test]
     fn test_part_2() {
-        let input = TEST_INPUT
+        let mut input = TEST_INPUT
             .split(',')
             .map(|v| v.parse().unwrap())
             .collect::<Vec<i32>>();
+
+        input.sort();
 
         let res = part_2(&input);
 
