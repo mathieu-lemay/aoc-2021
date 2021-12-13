@@ -19,23 +19,26 @@ fn parse_input(input: &[String]) -> HashSet<Edge> {
     edges
 }
 
-fn get_visitable_nodes_1<'a>(
+fn get_visitable_nodes<'a, F>(
     node: &str,
     edges: &'a HashSet<Edge>,
-    visited: &'a [String],
-) -> HashSet<&'a String> {
+    predicate: F,
+) -> HashSet<&'a String>
+where
+    F: Fn(&str) -> bool,
+{
     let mut visitable = HashSet::new();
 
     visitable.extend(
         edges
             .iter()
-            .filter(|e| e.0 == node && !visited.contains(&e.1))
+            .filter(|e| e.0 == node && predicate(&e.1))
             .map(|e| &e.1),
     );
     visitable.extend(
         edges
             .iter()
-            .filter(|e| e.1 == node && !visited.contains(&e.0))
+            .filter(|e| e.1 == node && predicate(&e.0))
             .map(|e| &e.0),
     );
 
@@ -45,7 +48,7 @@ fn get_visitable_nodes_1<'a>(
 fn get_nb_paths_with_single_visit(
     edges: &HashSet<Edge>,
     current_node: &str,
-    visited: &[String],
+    visited: &[&str],
 ) -> usize {
     if current_node == "end" {
         return 1;
@@ -53,61 +56,24 @@ fn get_nb_paths_with_single_visit(
 
     let mut visited = visited.to_owned();
     if current_node.to_lowercase() == current_node {
-        visited.push(current_node.to_string());
+        visited.push(current_node);
     }
 
     let mut paths = 0;
 
-    for node in get_visitable_nodes_1(current_node, edges, &visited) {
+    let visitable = |node: &str| !visited.contains(&node);
+
+    for node in get_visitable_nodes(current_node, edges, visitable) {
         paths += get_nb_paths_with_single_visit(edges, node, &visited)
     }
 
     paths
 }
 
-fn is_visitable(node: &str, visited: &HashMap<String, u32>) -> bool {
-    if node == "start" {
-        return false;
-    }
-
-    if node.to_uppercase() == node {
-        return true;
-    }
-
-    if visited.values().any(|&i| i == 2) {
-        return !visited.contains_key(node);
-    }
-
-    true
-}
-
-fn get_visitable_nodes_2<'a>(
-    node: &str,
-    edges: &'a HashSet<Edge>,
-    visited: &'a HashMap<String, u32>,
-) -> HashSet<&'a String> {
-    let mut visitable = HashSet::new();
-
-    visitable.extend(
-        edges
-            .iter()
-            .filter(|e| e.0 == node && is_visitable(&e.1, visited))
-            .map(|e| &e.1),
-    );
-    visitable.extend(
-        edges
-            .iter()
-            .filter(|e| e.1 == node && is_visitable(&e.0, visited))
-            .map(|e| &e.0),
-    );
-
-    visitable
-}
-
 fn get_nb_paths_with_double_visit(
     edges: &HashSet<Edge>,
     current_node: &str,
-    visited: &HashMap<String, u32>,
+    visited: &HashMap<&str, u32>,
 ) -> usize {
     if current_node == "end" {
         return 1;
@@ -115,15 +81,28 @@ fn get_nb_paths_with_double_visit(
 
     let mut visited = visited.clone();
     if current_node.to_lowercase() == current_node {
-        visited.insert(
-            current_node.to_string(),
-            visited.get(current_node).unwrap_or(&0) + 1,
-        );
+        visited.insert(current_node, visited.get(current_node).unwrap_or(&0) + 1);
     }
 
     let mut paths = 0;
 
-    for node in get_visitable_nodes_2(current_node, edges, &visited) {
+    let visitable = |node: &str| {
+        if node == "start" {
+            return false;
+        }
+
+        if node.to_uppercase() == node {
+            return true;
+        }
+
+        if visited.values().any(|&i| i == 2) {
+            return !visited.contains_key(node);
+        }
+
+        true
+    };
+
+    for node in get_visitable_nodes(current_node, edges, visitable) {
         paths += get_nb_paths_with_double_visit(edges, node, &visited)
     }
 
