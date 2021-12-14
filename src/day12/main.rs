@@ -5,7 +5,31 @@ use std::time::Instant;
 use aoc_2021::get_input;
 
 #[derive(Debug, Eq, PartialEq, Hash)]
-struct Edge(String, String);
+enum Node {
+    Start,
+    Small(String),
+    Big(String),
+    End,
+}
+
+impl From<&str> for Node {
+    fn from(n: &str) -> Self {
+        match n {
+            "start" => Node::Start,
+            "end" => Node::End,
+            n => {
+                if n.to_uppercase() == n {
+                    Node::Big(n.to_owned())
+                } else {
+                    Node::Small(n.to_owned())
+                }
+            }
+        }
+    }
+}
+
+#[derive(Debug, Eq, PartialEq, Hash)]
+struct Edge(Node, Node);
 
 fn parse_input(input: &[String]) -> HashSet<Edge> {
     let mut edges = HashSet::new();
@@ -13,32 +37,32 @@ fn parse_input(input: &[String]) -> HashSet<Edge> {
     for l in input {
         let (a, b) = l.split_once('-').unwrap();
 
-        edges.insert(Edge(a.to_owned(), b.to_owned()));
+        edges.insert(Edge(Node::from(a), Node::from(b)));
     }
 
     edges
 }
 
 fn get_visitable_nodes<'a, F>(
-    node: &str,
+    node: &Node,
     edges: &'a HashSet<Edge>,
     predicate: F,
-) -> HashSet<&'a String>
+) -> HashSet<&'a Node>
 where
-    F: Fn(&str) -> bool,
+    F: Fn(&'a Node) -> bool,
 {
     let mut visitable = HashSet::new();
 
     visitable.extend(
         edges
             .iter()
-            .filter(|e| e.0 == node && predicate(&e.1))
+            .filter(|e| &e.0 == node && predicate(&e.1))
             .map(|e| &e.1),
     );
     visitable.extend(
         edges
             .iter()
-            .filter(|e| e.1 == node && predicate(&e.0))
+            .filter(|e| &e.1 == node && predicate(&e.0))
             .map(|e| &e.0),
     );
 
@@ -47,21 +71,21 @@ where
 
 fn get_nb_paths_with_single_visit(
     edges: &HashSet<Edge>,
-    current_node: &str,
-    visited: &[&str],
+    current_node: &Node,
+    visited: &[&Node],
 ) -> usize {
-    if current_node == "end" {
+    if current_node == &Node::End {
         return 1;
     }
 
     let mut visited = visited.to_owned();
-    if current_node.to_lowercase() == current_node {
+    if let Node::Small(_) = current_node {
         visited.push(current_node);
     }
 
     let mut paths = 0;
 
-    let visitable = |node: &str| !visited.contains(&node);
+    let visitable = |node: &Node| node != &Node::Start && !visited.contains(&node);
 
     for node in get_visitable_nodes(current_node, edges, visitable) {
         paths += get_nb_paths_with_single_visit(edges, node, &visited)
@@ -72,26 +96,26 @@ fn get_nb_paths_with_single_visit(
 
 fn get_nb_paths_with_double_visit(
     edges: &HashSet<Edge>,
-    current_node: &str,
-    visited: &HashMap<&str, u32>,
+    current_node: &Node,
+    visited: &HashMap<&Node, u32>,
 ) -> usize {
-    if current_node == "end" {
+    if current_node == &Node::End {
         return 1;
     }
 
     let mut visited = visited.clone();
-    if current_node.to_lowercase() == current_node {
+    if let Node::Small(_) = current_node {
         visited.insert(current_node, visited.get(current_node).unwrap_or(&0) + 1);
     }
 
     let mut paths = 0;
 
-    let visitable = |node: &str| {
-        if node == "start" {
+    let visitable = |node: &Node| {
+        if node == &Node::Start {
             return false;
         }
 
-        if node.to_uppercase() == node {
+        if let Node::Big(_) = node {
             return true;
         }
 
@@ -112,8 +136,8 @@ fn get_nb_paths_with_double_visit(
 fn solve(input: &[String]) -> (impl Display, impl Display) {
     let edges = parse_input(input);
 
-    let p1 = get_nb_paths_with_single_visit(&edges, &"start".to_string(), &Vec::new());
-    let p2 = get_nb_paths_with_double_visit(&edges, &"start".to_string(), &HashMap::new());
+    let p1 = get_nb_paths_with_single_visit(&edges, &Node::Start, &Vec::new());
+    let p2 = get_nb_paths_with_double_visit(&edges, &Node::Start, &HashMap::new());
 
     assert_eq!(p1, 5457);
     assert_eq!(p2, 128506);
@@ -139,7 +163,7 @@ fn main() {
 mod tests {
     use crate::{
         get_nb_paths_with_double_visit, get_nb_paths_with_single_visit, parse_input, Edge, HashMap,
-        HashSet,
+        HashSet, Node,
     };
 
     static TEST_INPUT_A: &str = "start-A
@@ -194,13 +218,22 @@ start-RW";
         let edges = parsed_input(TEST_INPUT_A);
 
         let mut expected_edges = HashSet::new();
-        expected_edges.insert(Edge("start".to_string(), "A".to_string()));
-        expected_edges.insert(Edge("start".to_string(), "b".to_string()));
-        expected_edges.insert(Edge("A".to_string(), "c".to_string()));
-        expected_edges.insert(Edge("A".to_string(), "b".to_string()));
-        expected_edges.insert(Edge("b".to_string(), "d".to_string()));
-        expected_edges.insert(Edge("A".to_string(), "end".to_string()));
-        expected_edges.insert(Edge("b".to_string(), "end".to_string()));
+        expected_edges.insert(Edge(Node::Start, Node::Big("A".to_string())));
+        expected_edges.insert(Edge(Node::Start, Node::Small("b".to_string())));
+        expected_edges.insert(Edge(
+            Node::Big("A".to_string()),
+            Node::Small("c".to_string()),
+        ));
+        expected_edges.insert(Edge(
+            Node::Big("A".to_string()),
+            Node::Small("b".to_string()),
+        ));
+        expected_edges.insert(Edge(
+            Node::Small("b".to_string()),
+            Node::Small("d".to_string()),
+        ));
+        expected_edges.insert(Edge(Node::Big("A".to_string()), Node::End));
+        expected_edges.insert(Edge(Node::Small("b".to_string()), Node::End));
 
         assert_eq!(edges, expected_edges);
     }
@@ -210,7 +243,7 @@ start-RW";
         let edges = parsed_input(TEST_INPUT_A);
 
         assert_eq!(
-            get_nb_paths_with_single_visit(&edges, &"start".to_string(), &vec![]),
+            get_nb_paths_with_single_visit(&edges, &Node::Start, &vec![]),
             10
         );
     }
@@ -219,7 +252,7 @@ start-RW";
         let edges = parsed_input(TEST_INPUT_B);
 
         assert_eq!(
-            get_nb_paths_with_single_visit(&edges, &"start".to_string(), &vec![]),
+            get_nb_paths_with_single_visit(&edges, &Node::Start, &vec![]),
             19
         );
     }
@@ -228,7 +261,7 @@ start-RW";
         let edges = parsed_input(TEST_INPUT_C);
 
         assert_eq!(
-            get_nb_paths_with_single_visit(&edges, &"start".to_string(), &vec![]),
+            get_nb_paths_with_single_visit(&edges, &Node::Start, &vec![]),
             226
         );
     }
@@ -238,7 +271,7 @@ start-RW";
         let edges = parsed_input(TEST_INPUT_A);
 
         assert_eq!(
-            get_nb_paths_with_double_visit(&edges, &"start".to_string(), &HashMap::new()),
+            get_nb_paths_with_double_visit(&edges, &Node::Start, &HashMap::new()),
             36
         );
     }
@@ -247,7 +280,7 @@ start-RW";
         let edges = parsed_input(TEST_INPUT_B);
 
         assert_eq!(
-            get_nb_paths_with_double_visit(&edges, &"start".to_string(), &HashMap::new()),
+            get_nb_paths_with_double_visit(&edges, &Node::Start, &HashMap::new()),
             103
         );
     }
@@ -256,7 +289,7 @@ start-RW";
         let edges = parsed_input(TEST_INPUT_C);
 
         assert_eq!(
-            get_nb_paths_with_double_visit(&edges, &"start".to_string(), &HashMap::new()),
+            get_nb_paths_with_double_visit(&edges, &Node::Start, &HashMap::new()),
             3509
         );
     }
