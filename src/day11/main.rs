@@ -9,8 +9,8 @@ fn tick(values: &mut Vec<u32>) -> usize {
     let nb_values = values.len();
     let row_size = (nb_values as f32).sqrt() as usize;
 
-    for i in 0..values.len() {
-        values[i] += 1;
+    for v in values.iter_mut() {
+        *v += 1;
     }
 
     loop {
@@ -55,9 +55,9 @@ fn tick(values: &mut Vec<u32>) -> usize {
         flashes.append(&mut flashing);
     }
 
-    for i in 0..values.len() {
-        if values[i] > 9 {
-            values[i] = 0;
+    for v in values.iter_mut() {
+        if *v > 9 {
+            *v = 0;
         }
     }
 
