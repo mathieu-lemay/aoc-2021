@@ -5,10 +5,8 @@ use std::time::Instant;
 use aoc_2021::get_input;
 
 type Segments = Vec<char>;
-type Patterns = Vec<Segments>;
-type Digits = Vec<Segments>;
 
-fn parse_values(input: &[String]) -> Vec<(Patterns, Digits)> {
+fn parse_values(input: &[String]) -> Vec<(Vec<Segments>, Vec<Segments>)> {
     let mut values = Vec::with_capacity(input.len());
 
     for i in input {
@@ -45,7 +43,7 @@ fn is_pattern_same(p1: &[char], p2: &[char]) -> bool {
     h1 == h2
 }
 
-fn get_value(patterns: &Patterns, digits: &Digits) -> usize {
+fn get_value(patterns: &[Segments], digits: &[Segments]) -> usize {
     let pattern_1 = patterns.iter().find(|p| p.len() == 2).unwrap().clone();
     let pattern_4 = patterns.iter().find(|p| p.len() == 4).unwrap().clone();
     let pattern_7 = patterns.iter().find(|p| p.len() == 3).unwrap().clone();
@@ -118,7 +116,7 @@ fn get_value(patterns: &Patterns, digits: &Digits) -> usize {
         .fold(0, |acc, d| acc * 10 + d)
 }
 
-fn part_1(values: &[(Patterns, Digits)]) -> usize {
+fn part_1(values: &[(Vec<Segments>, Vec<Segments>)]) -> usize {
     values
         .iter()
         .map(|v| {
@@ -129,7 +127,7 @@ fn part_1(values: &[(Patterns, Digits)]) -> usize {
         .sum()
 }
 
-fn part_2(values: &[(Patterns, Digits)]) -> usize {
+fn part_2(values: &[(Vec<Segments>, Vec<Segments>)]) -> usize {
     values.iter().map(|(p, d)| get_value(p, d)).sum()
 }
 
