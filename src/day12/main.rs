@@ -4,7 +4,7 @@ use std::time::Instant;
 
 use aoc_2021::get_input;
 
-#[derive(Debug, Eq, PartialEq, Hash)]
+#[derive(Debug, Eq, PartialEq, Clone, Hash)]
 enum Node {
     Start,
     Small(String),
@@ -28,49 +28,46 @@ impl From<&str> for Node {
     }
 }
 
-#[derive(Debug, Eq, PartialEq, Hash)]
-struct Edge(Node, Node);
-
-fn parse_input(input: &[String]) -> HashSet<Edge> {
-    let mut edges = HashSet::new();
+fn parse_input(input: &[String]) -> HashMap<Node, HashSet<Node>> {
+    let mut neighbor_map = HashMap::new();
 
     for l in input {
         let (a, b) = l.split_once('-').unwrap();
 
-        edges.insert(Edge(Node::from(a), Node::from(b)));
+        let a = Node::from(a);
+        let b = Node::from(b);
+
+        if !neighbor_map.contains_key(&a) {
+            neighbor_map.insert(a.clone(), HashSet::new());
+        }
+
+        if !neighbor_map.contains_key(&b) {
+            neighbor_map.insert(b.clone(), HashSet::new());
+        }
+
+        neighbor_map.get_mut(&a).unwrap().insert(b.clone());
+        neighbor_map.get_mut(&b).unwrap().insert(a.clone());
     }
 
-    edges
+    neighbor_map
 }
 
 fn get_visitable_nodes<'a, F>(
     node: &Node,
-    edges: &'a HashSet<Edge>,
+    neighbor_map: &'a HashMap<Node, HashSet<Node>>,
     predicate: F,
 ) -> HashSet<&'a Node>
 where
     F: Fn(&'a Node) -> bool,
 {
-    let mut visitable = HashSet::new();
-
-    visitable.extend(
-        edges
-            .iter()
-            .filter(|e| &e.0 == node && predicate(&e.1))
-            .map(|e| &e.1),
-    );
-    visitable.extend(
-        edges
-            .iter()
-            .filter(|e| &e.1 == node && predicate(&e.0))
-            .map(|e| &e.0),
-    );
-
-    visitable
+    neighbor_map[node]
+        .iter()
+        .filter(|n| predicate(n))
+        .collect::<HashSet<&'a Node>>()
 }
 
 fn get_nb_paths_with_single_visit(
-    edges: &HashSet<Edge>,
+    neighbor_map: &HashMap<Node, HashSet<Node>>,
     current_node: &Node,
     visited: &[&Node],
 ) -> usize {
@@ -87,15 +84,15 @@ fn get_nb_paths_with_single_visit(
 
     let visitable = |node: &Node| node != &Node::Start && !visited.contains(&node);
 
-    for node in get_visitable_nodes(current_node, edges, visitable) {
-        paths += get_nb_paths_with_single_visit(edges, node, &visited)
+    for node in get_visitable_nodes(current_node, neighbor_map, visitable) {
+        paths += get_nb_paths_with_single_visit(neighbor_map, node, &visited)
     }
 
     paths
 }
 
 fn get_nb_paths_with_double_visit(
-    edges: &HashSet<Edge>,
+    neighbor_map: &HashMap<Node, HashSet<Node>>,
     current_node: &Node,
     visited: &HashMap<&Node, u32>,
 ) -> usize {
@@ -126,18 +123,18 @@ fn get_nb_paths_with_double_visit(
         true
     };
 
-    for node in get_visitable_nodes(current_node, edges, visitable) {
-        paths += get_nb_paths_with_double_visit(edges, node, &visited)
+    for node in get_visitable_nodes(current_node, neighbor_map, visitable) {
+        paths += get_nb_paths_with_double_visit(neighbor_map, node, &visited)
     }
 
     paths
 }
 
 fn solve(input: &[String]) -> (impl Display, impl Display) {
-    let edges = parse_input(input);
+    let neighbor_map = parse_input(input);
 
-    let p1 = get_nb_paths_with_single_visit(&edges, &Node::Start, &Vec::new());
-    let p2 = get_nb_paths_with_double_visit(&edges, &Node::Start, &HashMap::new());
+    let p1 = get_nb_paths_with_single_visit(&neighbor_map, &Node::Start, &Vec::new());
+    let p2 = get_nb_paths_with_double_visit(&neighbor_map, &Node::Start, &HashMap::new());
 
     assert_eq!(p1, 5457);
     assert_eq!(p2, 128506);
@@ -162,7 +159,7 @@ fn main() {
 #[cfg(test)]
 mod tests {
     use crate::{
-        get_nb_paths_with_double_visit, get_nb_paths_with_single_visit, parse_input, Edge, HashMap,
+        get_nb_paths_with_double_visit, get_nb_paths_with_single_visit, parse_input, HashMap,
         HashSet, Node,
     };
 
@@ -204,7 +201,7 @@ zg-he
 pj-fs
 start-RW";
 
-    fn parsed_input(input: &str) -> HashSet<Edge> {
+    fn parsed_input(input: &str) -> HashMap<Node, HashSet<Node>> {
         let input = input
             .split('\n')
             .map(|s| s.to_string())
@@ -215,81 +212,107 @@ start-RW";
 
     #[test]
     fn test_parse_input() {
-        let edges = parsed_input(TEST_INPUT_A);
+        let neighbor_map = parsed_input(TEST_INPUT_A);
 
-        let mut expected_edges = HashSet::new();
-        expected_edges.insert(Edge(Node::Start, Node::Big("A".to_string())));
-        expected_edges.insert(Edge(Node::Start, Node::Small("b".to_string())));
-        expected_edges.insert(Edge(
+        let mut expected_neighbor_map = HashMap::new();
+        expected_neighbor_map.insert(
+            Node::Start,
+            vec![Node::from("A"), Node::from("b")]
+                .iter()
+                .cloned()
+                .collect::<HashSet<Node>>(),
+        );
+        expected_neighbor_map.insert(
             Node::Big("A".to_string()),
+            vec![Node::Start, Node::from("b"), Node::from("c"), Node::End]
+                .iter()
+                .cloned()
+                .collect::<HashSet<Node>>(),
+        );
+        expected_neighbor_map.insert(
+            Node::Small("b".to_string()),
+            vec![Node::Start, Node::from("A"), Node::from("d"), Node::End]
+                .iter()
+                .cloned()
+                .collect::<HashSet<Node>>(),
+        );
+        expected_neighbor_map.insert(
             Node::Small("c".to_string()),
-        ));
-        expected_edges.insert(Edge(
-            Node::Big("A".to_string()),
-            Node::Small("b".to_string()),
-        ));
-        expected_edges.insert(Edge(
-            Node::Small("b".to_string()),
+            vec![Node::from("A")]
+                .iter()
+                .cloned()
+                .collect::<HashSet<Node>>(),
+        );
+        expected_neighbor_map.insert(
             Node::Small("d".to_string()),
-        ));
-        expected_edges.insert(Edge(Node::Big("A".to_string()), Node::End));
-        expected_edges.insert(Edge(Node::Small("b".to_string()), Node::End));
+            vec![Node::from("b")]
+                .iter()
+                .cloned()
+                .collect::<HashSet<Node>>(),
+        );
+        expected_neighbor_map.insert(
+            Node::End,
+            vec![Node::from("A"), Node::from("b")]
+                .iter()
+                .cloned()
+                .collect::<HashSet<Node>>(),
+        );
 
-        assert_eq!(edges, expected_edges);
+        assert_eq!(neighbor_map, expected_neighbor_map);
     }
 
     #[test]
     fn test_part_1_a() {
-        let edges = parsed_input(TEST_INPUT_A);
+        let neighbor_map = parsed_input(TEST_INPUT_A);
 
         assert_eq!(
-            get_nb_paths_with_single_visit(&edges, &Node::Start, &vec![]),
+            get_nb_paths_with_single_visit(&neighbor_map, &Node::Start, &vec![]),
             10
         );
     }
     #[test]
     fn test_part_1_b() {
-        let edges = parsed_input(TEST_INPUT_B);
+        let neighbor_map = parsed_input(TEST_INPUT_B);
 
         assert_eq!(
-            get_nb_paths_with_single_visit(&edges, &Node::Start, &vec![]),
+            get_nb_paths_with_single_visit(&neighbor_map, &Node::Start, &vec![]),
             19
         );
     }
     #[test]
     fn test_part_1_c() {
-        let edges = parsed_input(TEST_INPUT_C);
+        let neighbor_map = parsed_input(TEST_INPUT_C);
 
         assert_eq!(
-            get_nb_paths_with_single_visit(&edges, &Node::Start, &vec![]),
+            get_nb_paths_with_single_visit(&neighbor_map, &Node::Start, &vec![]),
             226
         );
     }
 
     #[test]
     fn test_part_2_a() {
-        let edges = parsed_input(TEST_INPUT_A);
+        let neighbor_map = parsed_input(TEST_INPUT_A);
 
         assert_eq!(
-            get_nb_paths_with_double_visit(&edges, &Node::Start, &HashMap::new()),
+            get_nb_paths_with_double_visit(&neighbor_map, &Node::Start, &HashMap::new()),
             36
         );
     }
     #[test]
     fn test_part_2_b() {
-        let edges = parsed_input(TEST_INPUT_B);
+        let neighbor_map = parsed_input(TEST_INPUT_B);
 
         assert_eq!(
-            get_nb_paths_with_double_visit(&edges, &Node::Start, &HashMap::new()),
+            get_nb_paths_with_double_visit(&neighbor_map, &Node::Start, &HashMap::new()),
             103
         );
     }
     #[test]
     fn test_part_2_c() {
-        let edges = parsed_input(TEST_INPUT_C);
+        let neighbor_map = parsed_input(TEST_INPUT_C);
 
         assert_eq!(
-            get_nb_paths_with_double_visit(&edges, &Node::Start, &HashMap::new()),
+            get_nb_paths_with_double_visit(&neighbor_map, &Node::Start, &HashMap::new()),
             3509
         );
     }
